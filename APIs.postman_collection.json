@@ -1,0 +1,463 @@
+{
+  "info": {
+    "name": "Order Processing APIs",
+    "description": "Complete Postman collection for Sales Service and Delivery Service APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "sales_base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "delivery_base_url",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "api_key",
+      "value": "api-key-1",
+      "type": "string"
+    },
+    {
+      "key": "idempotency_key",
+      "value": "{{$guid}}",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Sales Service",
+      "item": [
+        {
+          "name": "Health",
+          "item": [
+            {
+              "name": "Health Check",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{sales_base_url}}/health",
+                  "host": ["{{sales_base_url}}"],
+                  "path": ["health"]
+                },
+                "description": "Check the health status of the sales service"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Authentication",
+          "item": [
+            {
+              "name": "User Login",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    const response = pm.response.json();",
+                      "    if (response.data && response.data.token) {",
+                      "        pm.collectionVariables.set('jwt_token', response.data.token);",
+                      "        console.log('JWT token saved:', response.data.token);",
+                      "    }",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"customer@example.com\",\n  \"password\": \"customer123\"\n}"
+                },
+                "url": {
+                  "raw": "{{sales_base_url}}/api/v1/auth/login",
+                  "host": ["{{sales_base_url}}"],
+                  "path": ["api", "v1", "auth", "login"]
+                },
+                "description": "Authenticate user and receive JWT token. Rate limited to 5 attempts per 15 minutes."
+              },
+              "response": []
+            },
+            {
+              "name": "User Registration",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    if (response.data && response.data.token) {",
+                      "        pm.collectionVariables.set('jwt_token', response.data.token);",
+                      "        console.log('JWT token saved:', response.data.token);",
+                      "    }",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"customer\"\n}"
+                },
+                "url": {
+                  "raw": "{{sales_base_url}}/api/v1/auth/register",
+                  "host": ["{{sales_base_url}}"],
+                  "path": ["api", "v1", "auth", "register"]
+                },
+                "description": "Register a new user account. Rate limited to 5 attempts per 15 minutes."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Orders",
+          "item": [
+            {
+              "name": "Create Order",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{idempotency_key}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"customerId\": \"customer-123\",\n  \"items\": [\n    {\n      \"productId\": \"product-1\",\n      \"quantity\": 2,\n      \"price\": 19.99,\n      \"name\": \"Product 1\",\n      \"sku\": \"SKU-001\"\n    },\n    {\n      \"productId\": \"product-2\",\n      \"quantity\": 1,\n      \"price\": 9.99,\n      \"name\": \"Product 2\",\n      \"sku\": \"SKU-002\"\n    }\n  ],\n  \"totalAmount\": 49.97\n}"
+                },
+                "url": {
+                  "raw": "{{sales_base_url}}/api/v1/orders",
+                  "host": ["{{sales_base_url}}"],
+                  "path": ["api", "v1", "orders"]
+                },
+                "description": "Create a new order with idempotency support. Requires JWT authentication and Idempotency-Key header. Rate limited to 10 requests per 15 minutes."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Order by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{sales_base_url}}/api/v1/orders/:id",
+                  "host": ["{{sales_base_url}}"],
+                  "path": ["api", "v1", "orders", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "550e8400-e29b-41d4-a716-446655440000",
+                      "description": "Order ID"
+                    }
+                  ]
+                },
+                "description": "Retrieve a specific order by its ID. Requires API key authentication."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Orders by Customer ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{sales_base_url}}/api/v1/orders/customer/:customerId",
+                  "host": ["{{sales_base_url}}"],
+                  "path": ["api", "v1", "orders", "customer", ":customerId"],
+                  "variable": [
+                    {
+                      "key": "customerId",
+                      "value": "customer-123",
+                      "description": "Customer ID"
+                    }
+                  ]
+                },
+                "description": "Retrieve all orders for a specific customer. Requires API key authentication."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Orders by Status",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{sales_base_url}}/api/v1/orders/status/:status",
+                  "host": ["{{sales_base_url}}"],
+                  "path": ["api", "v1", "orders", "status", ":status"],
+                  "variable": [
+                    {
+                      "key": "status",
+                      "value": "PendingShipment",
+                      "description": "Order status (PendingShipment, Shipped, Delivered, Cancelled)"
+                    }
+                  ]
+                },
+                "description": "Retrieve all orders with a specific status. Requires API key authentication."
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Delivery Service",
+      "item": [
+        {
+          "name": "Health",
+          "item": [
+            {
+              "name": "Health Check",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{delivery_base_url}}/health",
+                  "host": ["{{delivery_base_url}}"],
+                  "path": ["health"]
+                },
+                "description": "Check the health status of the delivery service"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Deliveries",
+          "item": [
+            {
+              "name": "List All Deliveries",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{delivery_base_url}}/api/v1/deliveries",
+                  "host": ["{{delivery_base_url}}"],
+                  "path": ["api", "v1", "deliveries"]
+                },
+                "description": "Get a list of all deliveries (mocked data)"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Delivery by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{delivery_base_url}}/api/v1/deliveries/:id",
+                  "host": ["{{delivery_base_url}}"],
+                  "path": ["api", "v1", "deliveries", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "shipment-123",
+                      "description": "Shipment ID or Order ID"
+                    }
+                  ]
+                },
+                "description": "Get delivery by shipment ID or order ID"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Deliveries by Customer ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{delivery_base_url}}/api/v1/deliveries/customer/:customerId",
+                  "host": ["{{delivery_base_url}}"],
+                  "path": ["api", "v1", "deliveries", "customer", ":customerId"],
+                  "variable": [
+                    {
+                      "key": "customerId",
+                      "value": "customer-123",
+                      "description": "Customer ID"
+                    }
+                  ]
+                },
+                "description": "Get all deliveries for a specific customer"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Deliveries by Status",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{delivery_base_url}}/api/v1/deliveries/status/:status",
+                  "host": ["{{delivery_base_url}}"],
+                  "path": ["api", "v1", "deliveries", "status", ":status"],
+                  "variable": [
+                    {
+                      "key": "status",
+                      "value": "Pending",
+                      "description": "Delivery status"
+                    }
+                  ]
+                },
+                "description": "Get all deliveries with a specific status"
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Complete Flow Examples",
+      "item": [
+        {
+          "name": "1. Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testuser@example.com\",\n  \"password\": \"testpass123\",\n  \"role\": \"customer\"\n}"
+            },
+            "url": {
+              "raw": "{{sales_base_url}}/api/v1/auth/register",
+              "host": ["{{sales_base_url}}"],
+              "path": ["api", "v1", "auth", "register"]
+            },
+            "description": "Step 1: Register a new user to get JWT token"
+          },
+          "response": []
+        },
+        {
+          "name": "2. Create Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"test-customer-123\",\n  \"items\": [\n    {\n      \"productId\": \"p1\",\n      \"quantity\": 2,\n      \"price\": 19.99,\n      \"name\": \"Test Product 1\",\n      \"sku\": \"TEST-001\"\n    }\n  ],\n  \"totalAmount\": 39.98\n}"
+            },
+            "url": {
+              "raw": "{{sales_base_url}}/api/v1/orders",
+              "host": ["{{sales_base_url}}"],
+              "path": ["api", "v1", "orders"]
+            },
+            "description": "Step 2: Create an order using the JWT token from step 1"
+          },
+          "response": []
+        },
+        {
+          "name": "3. Check Delivery Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{delivery_base_url}}/api/v1/deliveries",
+              "host": ["{{delivery_base_url}}"],
+              "path": ["api", "v1", "deliveries"]
+            },
+            "description": "Step 3: Check delivery status (mocked data)"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-generate idempotency key if not set",
+          "if (!pm.collectionVariables.get('idempotency_key')) {",
+          "    pm.collectionVariables.set('idempotency_key', pm.variables.replaceIn('{{$guid}}'));",
+          "}"
+        ]
+      }
+    }
+  ]
+}

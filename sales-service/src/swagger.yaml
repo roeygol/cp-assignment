@@ -1,0 +1,504 @@
+openapi: 3.0.3
+info:
+  title: Sales Service API
+  description: |
+    A secure and scalable order processing service with idempotency support.
+    
+    ## Authentication
+    - **JWT Authentication**: Required for order creation (POST endpoints)
+    - **API Key Authentication**: Required for read operations (GET endpoints)
+    
+    ## Idempotency
+    - All POST requests must include an `Idempotency-Key` header
+    - Duplicate requests with the same key return cached responses
+    - Responses are cached for 24 hours
+    
+    ## Rate Limiting
+    - Order Creation: 10 requests per 15 minutes
+    - Authentication: 5 attempts per 15 minutes
+    - General API: 100 requests per 15 minutes
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+servers:
+  - url: http://localhost:3000
+    description: Development server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authentication
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for read operations
+  schemas:
+    OrderItem:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId:
+          type: string
+          description: Unique product identifier
+        quantity:
+          type: integer
+          minimum: 1
+          description: Quantity of the product
+        sku:
+          type: string
+          description: Product SKU
+        name:
+          type: string
+          description: Product name
+        price:
+          type: number
+          minimum: 0
+          description: Product price
+    CreateOrderRequest:
+      type: object
+      required: [customerId, items, totalAmount]
+      properties:
+        customerId:
+          type: string
+          description: Unique customer identifier
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+          minItems: 1
+          description: List of items in the order
+        totalAmount:
+          type: number
+          minimum: 0
+          description: Total amount of the order
+    Order:
+      type: object
+      properties:
+        orderId:
+          type: string
+          description: Unique order identifier
+        customerId:
+          type: string
+          description: Customer identifier
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        totalAmount:
+          type: number
+          description: Total amount
+        status:
+          type: string
+          enum: [PendingShipment, Shipped, Delivered, Cancelled]
+          description: Order status
+        createdAt:
+          type: string
+          format: date-time
+          description: Order creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+    CreateOrderResponse:
+      type: object
+      properties:
+        orderId:
+          type: string
+          description: Unique order identifier
+        status:
+          type: string
+          description: Order status
+    AuthRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email address
+        password:
+          type: string
+          minLength: 6
+          description: User password
+        role:
+          type: string
+          enum: [customer, admin]
+          default: customer
+          description: User role
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT authentication token
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              description: User ID
+            email:
+              type: string
+              description: User email
+            role:
+              type: string
+              description: User role
+    ApiResponse:
+      type: object
+      properties:
+        data:
+          description: Response data
+        error:
+          type: string
+          description: Error message
+        message:
+          type: string
+          description: Success message
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, error]
+          description: Service status
+        timestamp:
+          type: string
+          format: date-time
+          description: Response timestamp
+        service:
+          type: string
+          description: Service name
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Check the health status of the service
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '500':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/auth/login:
+    post:
+      summary: User login
+      description: Authenticate user and receive JWT token
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+            example:
+              email: "customer@example.com"
+              password: "customer123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '429':
+          description: Too many login attempts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/auth/register:
+    post:
+      summary: User registration
+      description: Register a new user account
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+            example:
+              email: "newuser@example.com"
+              password: "password123"
+              role: "customer"
+      responses:
+        '201':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '429':
+          description: Too many registration attempts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/v1/orders:
+    post:
+      summary: Create order
+      description: |
+        Create a new order with idempotency support.
+        
+        **Authentication**: JWT token required
+        **Idempotency**: Include `Idempotency-Key` header to prevent duplicate orders
+        **Rate Limiting**: 10 requests per 15 minutes
+      tags:
+        - Orders
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+          description: Unique key to ensure idempotency (e.g., UUID)
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+            example:
+              customerId: "customer-123"
+              items:
+                - productId: "product-1"
+                  quantity: 2
+                  price: 19.99
+                - productId: "product-2"
+                  quantity: 1
+                  price: 9.99
+              totalAmount: 49.97
+      responses:
+        '201':
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/CreateOrderResponse'
+        '400':
+          description: Bad request (missing idempotency key or invalid data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          description: Unauthorized (missing or invalid JWT token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '429':
+          description: Too many requests (rate limit exceeded)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/orders/{id}:
+    get:
+      summary: Get order by ID
+      description: Retrieve a specific order by its ID
+      tags:
+        - Orders
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Order ID
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '401':
+          description: Unauthorized (missing or invalid API key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '429':
+          description: Too many requests (rate limit exceeded)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/orders/customer/{customerId}:
+    get:
+      summary: Get orders by customer ID
+      description: Retrieve all orders for a specific customer
+      tags:
+        - Orders
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: customerId
+          required: true
+          schema:
+            type: string
+          description: Customer ID
+          example: "customer-123"
+      responses:
+        '200':
+          description: List of orders for the customer
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Order'
+        '401':
+          description: Unauthorized (missing or invalid API key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '429':
+          description: Too many requests (rate limit exceeded)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/orders/status/{status}:
+    get:
+      summary: Get orders by status
+      description: Retrieve all orders with a specific status
+      tags:
+        - Orders
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: status
+          required: true
+          schema:
+            type: string
+            enum: [PendingShipment, Shipped, Delivered, Cancelled]
+          description: Order status
+          example: "PendingShipment"
+      responses:
+        '200':
+          description: List of orders with the specified status
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Order'
+        '401':
+          description: Unauthorized (missing or invalid API key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Invalid status value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '429':
+          description: Too many requests (rate limit exceeded)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+tags:
+  - name: Health
+    description: Service health and status endpoints
+  - name: Authentication
+    description: User authentication and registration
+  - name: Orders
+    description: Order management operations
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+

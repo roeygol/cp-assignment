@@ -1,0 +1,64 @@
+openapi: 3.0.3
+info:
+  title: Delivery Service API
+  version: 1.0.0
+servers:
+  - url: http://localhost:3001
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+  /api/v1/deliveries:
+    get:
+      summary: List deliveries
+      responses:
+        '200':
+          description: List of deliveries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Shipment'
+  /api/v1/deliveries/{id}:
+    get:
+      summary: Get delivery by id (shipmentId or orderId)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Delivery
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shipment'
+        '404':
+          description: Not found
+
+components:
+  schemas:
+    Shipment:
+      type: object
+      properties:
+        shipmentId:
+          type: string
+        orderId:
+          type: string
+        carrier:
+          type: string
+        trackingNumber:
+          type: string
+          nullable: true
+        status:
+          type: string
+
