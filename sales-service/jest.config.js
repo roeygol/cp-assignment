@@ -11,7 +11,7 @@ export default {
     }],
   },
   testMatch: [
-    '**/__tests__/**/*.test.ts',
+    '**/tests/**/*.test.ts',
     '**/?(*.)+(spec|test).ts'
   ],
   collectCoverageFrom: [
@@ -22,7 +22,7 @@ export default {
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
-  setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
+  setupFilesAfterEnv: ['<rootDir>/src/tests/setup.ts'],
   testTimeout: 10000,
   verbose: true
 };

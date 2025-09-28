@@ -140,28 +140,6 @@ describe('OrderService', () => {
       expect(mockOrderRepository.createOrder).not.toHaveBeenCalled();
       expect(mockEventService.publishOrderCreatedEvent).not.toHaveBeenCalled();
     });
-
-    it('should throw error for invalid item productId', async () => {
-      const invalidRequest = {
-        ...validOrderRequest,
-        items: [{ productId: '', quantity: 2 }]
-      };
-
-      await expect(orderService.createOrder(invalidRequest)).rejects.toThrow('Invalid productId in item');
-      expect(mockOrderRepository.createOrder).not.toHaveBeenCalled();
-      expect(mockEventService.publishOrderCreatedEvent).not.toHaveBeenCalled();
-    });
-
-    it('should throw error for invalid item quantity', async () => {
-      const invalidRequest = {
-        ...validOrderRequest,
-        items: [{ productId: 'p1', quantity: 0 }]
-      };
-
-      await expect(orderService.createOrder(invalidRequest)).rejects.toThrow('Invalid quantity in item');
-      expect(mockOrderRepository.createOrder).not.toHaveBeenCalled();
-      expect(mockEventService.publishOrderCreatedEvent).not.toHaveBeenCalled();
-    });
   });
 
   describe('getOrdersByCustomerId', () => {

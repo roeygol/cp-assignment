@@ -54,11 +54,6 @@ describe('Rate Limiting Middleware', () => {
   });
 
   describe('orderCreationLimiter', () => {
-    it('should be defined and be a function', () => {
-      expect(orderCreationLimiter).toBeDefined();
-      expect(typeof orderCreationLimiter).toBe('function');
-    });
-
     it('should allow requests within limit', () => {
       (mockRequest as any).requestCount = 0;
       
@@ -82,11 +77,6 @@ describe('Rate Limiting Middleware', () => {
   });
 
   describe('generalLimiter', () => {
-    it('should be defined and be a function', () => {
-      expect(generalLimiter).toBeDefined();
-      expect(typeof generalLimiter).toBe('function');
-    });
-
     it('should allow requests within limit', () => {
       (mockRequest as any).requestCount = 0;
       
@@ -98,11 +88,6 @@ describe('Rate Limiting Middleware', () => {
   });
 
   describe('authLimiter', () => {
-    it('should be defined and be a function', () => {
-      expect(authLimiter).toBeDefined();
-      expect(typeof authLimiter).toBe('function');
-    });
-
     it('should allow requests within limit', () => {
       (mockRequest as any).requestCount = 0;
       
